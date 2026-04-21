@@ -1,0 +1,71 @@
+name: auth-service CD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: get ECR URL
+        id: ecr
+        run: |
+          ECR_URL=$(aws ecr describe-repositories --repository-names auth-service \
+            --query 'repositories[0].repositoryUri' --output text)
+          echo "url=$ECR_URL" >> $GITHUB_OUTPUT
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: auth-service
+          push: true
+          tags: ${{ steps.ecr.outputs.url }}:${{ github.sha }}
+
+      - name: write prod env file
+        run: |
+          cat > /tmp/auth.env <<EOF
+          AUTH_DATABASE_URL=${{ secrets.PROD_AUTH_DATABASE_URL }}
+          JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}
+          JWT_REFRESH_SECRET=${{ secrets.PROD_JWT_REFRESH_SECRET }}
+          ACCESS_TOKEN_TTL=${{ secrets.PROD_ACCESS_TOKEN_TTL }}
+          REFRESH_TOKEN_TTL=${{ secrets.PROD_REFRESH_TOKEN_TTL }}
+          OTEL_EXPORTER_OTLP_ENDPOINT=${{ secrets.PROD_OTEL_ENDPOINT }}
+          OTEL_SERVICE_NAME=auth-service
+          EOF
+
+      - name: update ArgoCD values-prod.yaml
+        env:
+          ARGOCD_REPO_TOKEN: ${{ secrets.ARGOCD_REPO_TOKEN }}
+        run: |
+          git clone https://x-access-token:${ARGOCD_REPO_TOKEN}@github.com/huzaifa678/SAAS-Continious-Delivery.git /tmp/cd
+          cd /tmp/cd
+
+          wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+
+          yq -i '.authService.image.repository = "${{ steps.ecr.outputs.url }}"' saas-chart/values-prod.yaml
+          yq -i '.authService.image.tag        = "${{ github.sha }}"'             saas-chart/values-prod.yaml
+
+          AUTH_ENV_B64=$(base64 -w0 /tmp/auth.env)
+          yq -i ".authService.envSecret = \"$AUTH_ENV_B64\"" saas-chart/values-prod.yaml
+
+          git config user.email "ci@github.com"
+          git config user.name  "GitHub Actions"
+          git add saas-chart/values-prod.yaml
+          git commit -m "cd(auth-service): update image to ${{ github.sha }}"
+          git push
