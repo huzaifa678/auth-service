@@ -38,9 +38,6 @@ jobs:
           yq -i '.authService.image.repository = "${{ steps.ecr.outputs.url }}"' saas-chart/values-prod.yaml
           yq -i '.authService.image.tag        = "${{ github.sha }}"'             saas-chart/values-prod.yaml
 
-          AUTH_ENV_B64=$(base64 -w0 /tmp/auth.env)
-          yq -i ".authService.envSecret = \"$AUTH_ENV_B64\"" saas-chart/values-prod.yaml
-
           git config user.email "ci@github.com"
           git config user.name  "GitHub Actions"
           git add saas-chart/values-prod.yaml
