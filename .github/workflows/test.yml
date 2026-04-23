@@ -1,12 +1,12 @@
-name: auth-service CI
+name: auth-service Test
 
 on:
-  push:
-    branches: [dev]
+  pull_request:
+    branches: [test]
     paths: [auth-service/**]
 
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -52,14 +52,15 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & push sha-tagged image
-        uses: docker/build-push-action@v6
-        with:
-          context: auth-service
-          push: true
-          tags: ${{ steps.ecr.outputs.url }}:sha-${{ github.sha }}
+      - name: Retag sha → test
+        run: |
+          MANIFEST=$(aws ecr batch-get-image --repository-name auth-service \
+            --image-ids imageTag=sha-${{ github.sha }} \
+            --query 'images[0].imageManifest' --output text)
+          aws ecr put-image --repository-name auth-service \
+            --image-tag test --image-manifest "$MANIFEST"
 
-      - name: Update ArgoCD values-dev.yaml
+      - name: Update ArgoCD values-test.yaml
         env:
           ARGOCD_REPO_TOKEN: ${{ secrets.ARGOCD_REPO_TOKEN }}
         run: |
@@ -70,10 +71,10 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           chmod +x /usr/local/bin/yq
 
-          yq -i '.image.authService = "${{ steps.ecr.outputs.url }}:sha-${{ github.sha }}"' saas-chart/values-dev.yaml
+          yq -i '.image.authService = "${{ steps.ecr.outputs.url }}:test"' saas-chart/values-test.yaml
 
           git config user.email "ci@github.com"
           git config user.name "GitHub Actions"
-          git add saas-chart/values-dev.yaml
-          git commit -m "ci(auth-service): deploy sha-${{ github.sha }} to dev"
+          git add saas-chart/values-test.yaml
+          git commit -m "test(auth-service): promote sha-${{ github.sha }} to test"
           git push

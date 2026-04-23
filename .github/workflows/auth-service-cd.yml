@@ -1,30 +1,45 @@
 name: auth-service CD
 
 on:
-  push:
-    branches: [test, main]
+  pull_request:
+    branches: [main]
+    paths: [auth-service/**]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     permissions:
       id-token: write
       contents: read
 
     steps:
-      - name: Set environment
-        id: vars
-        run: |
-          if [[ "${GITHUB_REF##*/}" == "test" ]]; then
-            echo "file=values-test.yaml" >> $GITHUB_OUTPUT
-            echo "env=test" >> $GITHUB_OUTPUT
-          else
-            echo "file=values-prod.yaml" >> $GITHUB_OUTPUT
-            echo "env=prod" >> $GITHUB_OUTPUT
-          fi
+      - uses: actions/checkout@v4
 
-      - name: update ArgoCD values-prod.yaml
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get ECR URL
+        id: ecr
+        run: |
+          ECR_URL=$(aws ecr describe-repositories --repository-names auth-service \
+            --query 'repositories[0].repositoryUri' --output text)
+          echo "url=$ECR_URL" >> $GITHUB_OUTPUT
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Retag sha → prod
+        run: |
+          MANIFEST=$(aws ecr batch-get-image --repository-name auth-service \
+            --image-ids imageTag=sha-${{ github.sha }} \
+            --query 'images[0].imageManifest' --output text)
+          aws ecr put-image --repository-name auth-service \
+            --image-tag prod --image-manifest "$MANIFEST"
+
+      - name: Update ArgoCD values-prod.yaml
         env:
           ARGOCD_REPO_TOKEN: ${{ secrets.ARGOCD_REPO_TOKEN }}
         run: |
@@ -35,11 +50,10 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           chmod +x /usr/local/bin/yq
 
-          yq -i '.authService.image.repository = "${{ steps.ecr.outputs.url }}"' saas-chart/values-prod.yaml
-          yq -i '.authService.image.tag        = "${{ github.sha }}"'             saas-chart/values-prod.yaml
+          yq -i '.image.authService = "${{ steps.ecr.outputs.url }}:prod"' saas-chart/values-prod.yaml
 
           git config user.email "ci@github.com"
-          git config user.name  "GitHub Actions"
+          git config user.name "GitHub Actions"
           git add saas-chart/values-prod.yaml
-          git commit -m "cd(auth-service): update image to ${{ github.sha }}"
+          git commit -m "cd(auth-service): promote sha-${{ github.sha }} to prod"
           git push
