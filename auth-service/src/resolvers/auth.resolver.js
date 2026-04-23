@@ -1,5 +1,5 @@
-import { loginBreaker, refreshTokenBreaker, registerUser } from '../service/auth.service.js';
-import { UserDAO } from '../models/dao/auth.dao.js';
+import { loginBreaker, refreshTokenBreaker, registerUser } from '#service/auth.service.js';
+import { UserDAO } from '#dao/auth.dao.js';
 
 export const resolvers = {
   Query: {

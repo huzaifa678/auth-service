@@ -10,6 +10,17 @@
     "test": "jest --detectOpenHandles --forceExit --coverage",
     "migrate": "npx prisma migrate dev --name add_refresh_token_indexes"
   },
+  "imports": {
+    "#utils/*": "./*",
+    "#dao/*": "./src/models/dao/*",
+    "#dto/*": "./src/models/dto/*",
+    "#db/*": "./src/db/*",
+    "#service/*": "./src/service/*",
+    "#resolvers/*": "./src/resolvers/*",
+    "#controller/*": "./src/controller/*",
+    "#test/*": "./__test__/*",
+    "#schema/*": "./src/schema/*"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

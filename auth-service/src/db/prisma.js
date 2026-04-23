@@ -2,7 +2,7 @@ import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
 import { PrismaPg } from '@prisma/adapter-pg';
 import dotenv from 'dotenv';
-import logger from '../../logger.js' 
+import logger from '#utils/logger.js'; 
 
 dotenv.config();
 

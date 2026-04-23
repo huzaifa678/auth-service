@@ -4,9 +4,9 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import jwt from 'jsonwebtoken';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import { trace, context, propagation } from '@opentelemetry/api';
-import logger from '../../logger.js' 
-import typeDefs from '../schema/auth.schema.js';
-import { resolvers } from '../resolvers/auth.resolver.js';
+import logger from "#utils/logger.js"
+import typeDefs from '#schema/auth.schema.js';
+import { resolvers } from '#resolvers/auth.resolver.js';
 
 const router = express.Router();
 const tracer = trace.getTracer('auth-service');

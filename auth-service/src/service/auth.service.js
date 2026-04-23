@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { UserDAO, RefreshTokenDAO } from '../models/dao/auth.dao.js';
-import { LoginDTO, CreateUserDTO, RefreshTokenDTO } from '../models/dto/auth.dto.js';
+import { UserDAO, RefreshTokenDAO } from '#dao/auth.dao.js';
+import { LoginDTO, CreateUserDTO, RefreshTokenDTO } from '#dto/auth.dto.js';
 import { createBreaker } from './circuitBreaker.js';
 import promClient from 'prom-client';
 

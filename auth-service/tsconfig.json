@@ -15,7 +15,6 @@
       "@resolvers/*": ["src/resolvers/*"],
       "@controller/*": ["src/controller/*"],
       "@test/*": ["__test__/*"],
-      "@logger/*": ["./logger"],
       "@schema/*": ["src/schema/*"]
     },
   }
