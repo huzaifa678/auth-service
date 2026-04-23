@@ -34,7 +34,8 @@ describe('Auth Integration Flow', () => {
         try {
           const payload = jwt.verify(token, process.env.JWT_SECRET);
           req.userId = payload.userId;
-        } catch {
+        } catch{
+          console.warn('Invalid JWT token');
         }
       }
 
