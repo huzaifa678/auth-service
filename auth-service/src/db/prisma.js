@@ -2,6 +2,7 @@ import pkg from '@prisma/client';
 const { PrismaClient } = pkg;
 import { PrismaPg } from '@prisma/adapter-pg';
 import dotenv from 'dotenv';
+import logger from '../../logger.js' 
 
 dotenv.config();
 
@@ -27,10 +28,12 @@ if (process.env.NODE_ENV !== 'production') {
 
 const shutdown = async (signal) => {
 
+  logger.info(`Received shutdown signal: ${signal}`);
   try {
     await prisma.$disconnect();
     process.exit(0);
   } catch (err) {
+    logger.error(`Error during Prisma shutdown: ${err}`);
     process.exit(1);
   }
 };
