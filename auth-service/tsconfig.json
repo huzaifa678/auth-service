@@ -6,6 +6,17 @@
     "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "paths": {
+      "@model/*": ["src/models/*"],
+      "@db/*": ["src/db/*"],
+      "@service/*": ["src/service/*"],
+      "@resolvers/*": ["src/resolvers/*"],
+      "@controller/*": ["src/controller/*"],
+      "@test/*": ["__test__/*"],
+      "@logger/*": ["./logger"],
+      "@schema/*": ["src/schema/*"]
+    },
   }
 }
