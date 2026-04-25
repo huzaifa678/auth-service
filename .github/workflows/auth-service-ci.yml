@@ -72,10 +72,11 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           chmod +x /usr/local/bin/yq
 
-          yq -i '.image.authService = "${{ steps.ecr.outputs.url }}:sha-${{ github.sha }}"' saas-chart/values-dev.yaml
+          yq -i '.image.repository = "${{ steps.ecr.outputs.url }}"' charts/auth-service/values-dev.yaml
+          yq -i '.image.tag = "sha-${{ github.sha }}"' charts/auth-service/values-dev.yaml
 
           git config user.email "ci@github.com"
           git config user.name "GitHub Actions"
-          git add saas-chart/values-dev.yaml
+          git add charts/auth-service/values-dev.yaml
           git commit -m "ci(auth-service): deploy sha-${{ github.sha }} to dev"
           git push

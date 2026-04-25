@@ -50,10 +50,11 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           chmod +x /usr/local/bin/yq
 
-          yq -i '.image.authService = "${{ steps.ecr.outputs.url }}:prod"' saas-chart/values-prod.yaml
+          yq -i '.image.repository = "${{ steps.ecr.outputs.url }}"' charts/auth-service/values-prod.yaml
+          yq -i '.image.tag = "prod"' charts/auth-service/values-prod.yaml
 
           git config user.email "ci@github.com"
           git config user.name "GitHub Actions"
-          git add saas-chart/values-prod.yaml
+          git add charts/auth-service/values-prod.yaml
           git commit -m "cd(auth-service): promote sha-${{ github.sha }} to prod"
           git push
