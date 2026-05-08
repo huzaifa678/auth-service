@@ -1,4 +1,4 @@
-name: Dev to Staging PR
+name: Dev to test PR
 
 on:
   push:
