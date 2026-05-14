@@ -46,7 +46,7 @@ importers:
         version: 0.57.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources':
         specifier: ^2.5.0
-        version: 2.5.0(@opentelemetry/api@1.9.1)
+        version: 2.7.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-logs':
         specifier: ^0.213.0
         version: 0.213.0(@opentelemetry/api@1.9.1)
@@ -5494,7 +5494,7 @@ snapshots:
       '@opentelemetry/resource-detector-azure': 0.19.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resource-detector-container': 0.8.2(@opentelemetry/api@1.9.1)
       '@opentelemetry/resource-detector-gcp': 0.46.0(@opentelemetry/api@1.9.1)
-      '@opentelemetry/resources': 2.5.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/resources': 2.7.1(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-node': 0.211.0(@opentelemetry/api@1.9.1)
     transitivePeerDependencies:
       - encoding
