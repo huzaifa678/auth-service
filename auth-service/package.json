@@ -18,6 +18,10 @@
     "#service/*": "./src/service/*",
     "#resolvers/*": "./src/resolvers/*",
     "#controller/*": "./src/controller/*",
+    "#middleware/*": "./src/middleware/*",
+    "#config/*": "./src/config/*",
+    "#metrics/*": "./src/metrics/*",
+    "#graphql/*": "./src/graphql/*",
     "#test/*": "./__test__/*",
     "#schema/*": "./src/schema/*"
   },
