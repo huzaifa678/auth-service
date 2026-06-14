@@ -29,7 +29,7 @@ app.use('/api/auth', router);
 app.get('/healthz/live', (_req, res) => res.sendStatus(200));
 app.get('/healthz/ready', (_req, res) => res.sendStatus(200));
 
-app.get('/metrics', async (res) => {
+metricsApp.get('/metrics', async (_req, res) => {
   res.set('Content-Type', promClient.register.contentType);
   res.end(await promClient.register.metrics());
 });
