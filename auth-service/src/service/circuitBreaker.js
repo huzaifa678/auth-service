@@ -1,17 +1,12 @@
 import CircuitBreaker from 'opossum';
-import logger from '../../logger.js' 
+import logger from '#utils/logger.js';
+import { breakerConfig } from '#config/auth.config.js';
 
 export function createBreaker(fn, options = {}) {
-  let lastError = null; // initializing error for message 
+  let lastError = null; // initializing error for message
 
-  const defaultOptions = {
-    timeout: 5000,      
-    errorThresholdPercentage: 50, 
-    resetTimeout: 10000, 
-  };
-  
   const { fallback, ...breakerOptions } = options;
-  const breaker = new CircuitBreaker(fn, { ...defaultOptions, ...breakerOptions });
+  const breaker = new CircuitBreaker(fn, { ...breakerConfig, ...breakerOptions });
 
   if (fallback) {
     breaker.fallback(fallback);
