@@ -1,102 +1,93 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { UserDAO, RefreshTokenDAO } from '#dao/auth.dao.js';
 import { LoginDTO, CreateUserDTO, RefreshTokenDTO } from '#dto/auth.dto.js';
+import { TokenService } from '#service/token.service.js';
+import { authMetrics } from '#metrics/auth.metrics.js';
+import { refreshTokenExpiryDate } from '#config/auth.config.js';
 import { createBreaker } from './circuitBreaker.js';
-import promClient from 'prom-client';
 
-const loginSuccessCounter = new promClient.Counter({ name: 'auth_login_success_total', help: 'Total successful login attempts' });
-const loginFailureCounter = new promClient.Counter({ name: 'auth_login_failure_total', help: 'Total failed login attempts' });
-const loginFallbackCounter = new promClient.Counter({ name: 'auth_login_fallback_total', help: 'Login attempts hit circuit breaker fallback' });
+const BCRYPT_SALT_ROUNDS = 10;
 
-const refreshTokenCounter = new promClient.Counter({ name: 'auth_refresh_token_total', help: 'Total refresh token requests' });
-const refreshTokenFailureCounter = new promClient.Counter({ name: 'auth_refresh_token_failure_total', help: 'Total failed refresh token requests' });
-const refreshTokenFallbackCounter = new promClient.Counter({ name: 'auth_refresh_token_fallback_total', help: 'Refresh token attempts hit circuit breaker fallback' });
-
-const { sign, verify } = jwt;
+/** Persists a freshly issued refresh token for a user. */
+const persistRefreshToken = (token, userId) =>
+  RefreshTokenDAO.create({
+    token,
+    userId,
+    expiresAt: refreshTokenExpiryDate(),
+  });
 
 const loginHandler = async ({ email, password }) => {
-  const dto = new LoginDTO({ email, password });
+  const { email: validEmail, password: validPassword } = new LoginDTO({ email, password });
 
-  const user = await UserDAO.findByEmail(dto.email);
+  const user = await UserDAO.findByEmail(validEmail);
   if (!user) {
-    loginFailureCounter.inc();
+    authMetrics.loginFailure.inc();
     throw new Error('Invalid username credential');
   }
 
-  const valid = await bcrypt.compare(dto.password, user.password);
-  if (!valid) {
-    loginFailureCounter.inc();
+  const passwordMatches = await bcrypt.compare(validPassword, user.password);
+  if (!passwordMatches) {
+    authMetrics.loginFailure.inc();
     throw new Error('Invalid password credential');
   }
 
-  const accessToken = sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: process.env.ACCESS_TOKEN_TTL });
-  const refreshToken = sign({ userId: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.REFRESH_TOKEN_TTL });
+  const { accessToken, refreshToken } = TokenService.issueTokenPair(user.id);
+  await persistRefreshToken(refreshToken, user.id);
 
-  await RefreshTokenDAO.create({
-    token: refreshToken,
-    userId: user.id,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
-
-  loginSuccessCounter.inc();
+  authMetrics.loginSuccess.inc();
   return { accessToken, refreshToken, user };
 };
 
 const refreshTokenHandler = async ({ token }) => {
-  const dto = new RefreshTokenDTO({ token });
-  refreshTokenCounter.inc();
+  const { token: validToken } = new RefreshTokenDTO({ token });
+  authMetrics.refreshToken.inc();
 
   let payload;
   try {
-    payload = verify(dto.token, process.env.JWT_REFRESH_SECRET);
+    payload = TokenService.verifyRefreshToken(validToken);
   } catch {
-    refreshTokenFailureCounter.inc();
+    authMetrics.refreshTokenFailure.inc();
     throw new Error('Invalid refresh token');
   }
 
-  const storedToken = await RefreshTokenDAO.find(dto.token);
+  const storedToken = await RefreshTokenDAO.find(validToken);
   if (!storedToken) {
-    refreshTokenFailureCounter.inc();
+    authMetrics.refreshTokenFailure.inc();
     throw new Error('Refresh token revoked');
   }
 
-  const accessToken = sign({ userId: payload.userId }, process.env.JWT_SECRET, { expiresIn: process.env.ACCESS_TOKEN_TTL });
-  const refreshToken = sign({ userId: payload.userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.REFRESH_TOKEN_TTL });
+  const { accessToken, refreshToken } = TokenService.issueTokenPair(payload.userId);
 
-  await RefreshTokenDAO.delete(dto.token);
-  await RefreshTokenDAO.create({
-    token: refreshToken,
-    userId: payload.userId,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
+  await RefreshTokenDAO.delete(validToken);
+  await persistRefreshToken(refreshToken, payload.userId);
 
   const user = await UserDAO.findById(payload.userId);
   return { accessToken, refreshToken, user };
 };
 
+const unavailableResponse = (error) => ({
+  error,
+  accessToken: null,
+  refreshToken: null,
+  user: null,
+});
+
 export const loginBreaker = createBreaker(loginHandler, {
-  timeout: 5000,
-  errorThresholdPercentage: 50,
-  resetTimeout: 10000,
   fallback: () => {
-    loginFallbackCounter.inc();
-    return { error: 'Authentication service temporarily unavailable', accessToken: null, refreshToken: null, user: null };
+    authMetrics.loginFallback.inc();
+    return unavailableResponse('Authentication service temporarily unavailable');
   },
 });
 
 export const refreshTokenBreaker = createBreaker(refreshTokenHandler, {
-  timeout: 5000,
-  errorThresholdPercentage: 50,
-  resetTimeout: 10000,
   fallback: () => {
-    refreshTokenFallbackCounter.inc();
-    return { error: 'Refresh token service temporarily unavailable', accessToken: null, refreshToken: null, user: null };
+    authMetrics.refreshTokenFallback.inc();
+    return unavailableResponse('Refresh token service temporarily unavailable');
   },
 });
 
 export const registerUser = async ({ email, password }) => {
-  const dto = new CreateUserDTO({ email, password });
-  const hashed = await bcrypt.hash(dto.password, 10);
-  return UserDAO.createUser({ email: dto.email, password: hashed });
+  const { email: validEmail, password: validPassword } = new CreateUserDTO({ email, password });
+  const hashedPassword = await bcrypt.hash(validPassword, BCRYPT_SALT_ROUNDS);
+  return UserDAO.createUser({ email: validEmail, password: hashedPassword });
 };
