@@ -1,0 +1,53 @@
+name: Test GitOps Bot Push
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-bot-push:
+    name: Verify App token + push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GITOPS_APP_ID }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
+          owner: huzaifa678
+          repositories: SAAS-Continious-Delivery
+
+      - name: Confirm token was minted
+        run: |
+          if [ -z "${{ steps.app-token.outputs.token }}" ]; then
+            echo "::error::App token is empty — check GITOPS_APP_ID / GITOPS_APP_PRIVATE_KEY"
+            exit 1
+          fi
+          echo "App token generated. Installation ID: ${{ steps.app-token.outputs.installation-id }}"
+
+      - name: Clone, commit, and push a marker file
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git clone https://x-access-token:${GH_TOKEN}@github.com/huzaifa678/SAAS-Continious-Delivery.git /tmp/cd
+          cd /tmp/cd
+
+          git config user.name "SAAS-gitops-bot[bot]"
+          git config user.email "${{ steps.app-token.outputs.installation-id }}+saas-gitops-bot[bot]@users.noreply.github.com"
+
+          STAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ) by run ${{ github.run_id }}"
+          echo "$STAMP" > .gitops-bot-test
+          git add .gitops-bot-test
+          git commit -m "test(bot): verify push access — $STAMP"
+          git push
+          echo "Push succeeded."
+
+      - name: Clean up marker file
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          cd /tmp/cd
+          git rm .gitops-bot-test
+          git commit -m "test(bot): remove verification marker"
+          git push
+          echo "Cleanup pushed. Bot auth is fully working."
