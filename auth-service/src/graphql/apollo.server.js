@@ -1,8 +1,12 @@
 import { ApolloServer } from '@apollo/server';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+import { ApolloServerPluginLandingPageDisabled } from '@apollo/server/plugin/disabled';
 import typeDefs from '#schema/auth.schema.js';
 import { resolvers } from '#resolvers/auth.resolver.js';
+
+// Expose the GraphQL schema only in the dev environment
+const isDev = process.env.APP_ENV === 'dev';
 
 /**
  * Builds and starts a single Apollo Server instance for the lifetime of the
@@ -14,7 +18,12 @@ const schema = makeExecutableSchema({ typeDefs, resolvers });
 
 const apolloServer = new ApolloServer({
   schema,
-  plugins: [ApolloServerPluginLandingPageLocalDefault()],
+  introspection: isDev,
+  plugins: [
+    isDev
+      ? ApolloServerPluginLandingPageLocalDefault()
+      : ApolloServerPluginLandingPageDisabled(),
+  ],
 });
 
 await apolloServer.start();
