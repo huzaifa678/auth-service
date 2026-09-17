@@ -50,15 +50,19 @@ const refreshTokenHandler = async ({ token }) => {
     throw new Error('Invalid refresh token');
   }
 
-  const storedToken = await RefreshTokenDAO.find(validToken);
-  if (!storedToken) {
+  // Atomically consume the presented refresh token. deleteMany reports how many
+  // rows it removed, so exactly one of several concurrent refreshes with the same
+  // token can delete when count === 1, the rest see count === 0 and are
+  // rejected. This is the conditional-write guard that closes the check-then-act
+  // window in which a reused/duplicated refresh token could mint two token
+  // families.
+  const { count } = await RefreshTokenDAO.deleteManyByToken(validToken);
+  if (count === 0) {
     authMetrics.refreshTokenFailure.inc();
     throw new Error('Refresh token revoked');
   }
 
   const { accessToken, refreshToken } = TokenService.issueTokenPair(payload.userId);
-
-  await RefreshTokenDAO.delete(validToken);
   await persistRefreshToken(refreshToken, payload.userId);
 
   const user = await UserDAO.findById(payload.userId);

@@ -63,8 +63,7 @@ describe('Auth Service', () => {
     it('should return new tokens and user on successful refresh', async () => {
       const payload = { userId: '1' };
       jwt.verify.mockReturnValue(payload);
-      RefreshTokenDAO.find.mockResolvedValue({ token: 'old-token' });
-      RefreshTokenDAO.delete.mockResolvedValue(true);
+      RefreshTokenDAO.deleteManyByToken.mockResolvedValue({ count: 1 });
       RefreshTokenDAO.create.mockResolvedValue(true);
       UserDAO.findById.mockResolvedValue({ id: '1', email: 'user@test.com' });
       jwt.sign.mockImplementation((payload) => `${payload.userId}-token`);
@@ -72,7 +71,7 @@ describe('Auth Service', () => {
       const result = await refreshTokenBreaker.fire({ token: 'old-token' });
 
       expect(jwt.verify).toHaveBeenCalledWith('old-token', process.env.JWT_REFRESH_SECRET);
-      expect(RefreshTokenDAO.find).toHaveBeenCalledWith('old-token');
+      expect(RefreshTokenDAO.deleteManyByToken).toHaveBeenCalledWith('old-token');
       expect(result.accessToken).toBe('1-token');
       expect(result.refreshToken).toBe('1-token');
       expect(result.user).toEqual({ id: '1', email: 'user@test.com' });
@@ -87,7 +86,7 @@ describe('Auth Service', () => {
 
     it('should trigger fallback if token revoked', async () => {
       jwt.verify.mockReturnValue({ userId: '1' });
-      RefreshTokenDAO.find.mockResolvedValue(null);
+      RefreshTokenDAO.deleteManyByToken.mockResolvedValue({ count: 0 });
 
       const result = await refreshTokenBreaker.fire({ token: 'revoked-token' });
       expect(result.error).toBe('Refresh token service temporarily unavailable');
