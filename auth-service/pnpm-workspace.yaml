@@ -2,3 +2,23 @@ onlyBuiltDependencies:
   - '@prisma/engines'
   - bcrypt
   - prisma
+
+overrides:
+  '@graphql-tools/utils': '>=12.0.1'          # CVE-2026-104852 (prototype-pollution DoS)
+  '@grpc/grpc-js': '>=1.14.5'                 # CVE-2026-101916 (authn bypass) + 48068/48069 (crash)
+  '@opentelemetry/propagator-jaeger': '>=2.9.0' # CVE-2026-59892 (DoS)
+  'deepmerge-ts': '>=8.0.0'                    # CVE-2026-40345 (stack exhaustion)
+  'fast-uri': '>=3.1.7'                        # CVE-2026-84292 + SSRF/host-confusion chain
+  'mysql2': '>=3.22.0'                         # GHSA-3f6p-5ww8-9rcr (auth-plugin downgrade)
+  'path-to-regexp': '>=8.4.0'                  # CVE-2026-4926 (ReDoS)
+  'proxy-addr': '>=2.0.8'                       # CVE-2026-90711 (IP spoofing, CRITICAL)
+  'protobufjs@7': '7.6.1'                      # CVE-2026-48712
+  'protobufjs@8': '8.4.1'                      # CVE-2026-44289/44290/44291/44293/48712
+  'brace-expansion@1': '1.1.20'                # CVE-2026-102276/102278/13149/14257/69152
+  'brace-expansion@2': '2.1.6'
+  'brace-expansion@5': '5.0.11'
+  'browserslist': '>=4.28.7'                   # CVE-2026-73088/73089 (prototype pollution DoS)
+  'form-data@4': '>=4.0.6'                     # CVE-2026-12143 (CRLF field override)
+  'js-yaml@3': '3.15.2'                        # CVE-2026-59869/84375 + GHSA-5p4m-2wfm-xmqj
+  'minimatch@3': '3.1.5'                       # CVE-2026-26996/27903/27904 (ReDoS)
+  'picomatch@2': '2.3.2'                       # CVE-2026-33671 (ReDoS)
