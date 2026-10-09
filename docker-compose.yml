@@ -1,0 +1,45 @@
+# Local development stack for auth-service (Node + Prisma).
+#   docker compose up --build
+# The app runs `prisma migrate deploy` on start, so the schema is applied
+# automatically. JWT secrets default to dev values; override via your shell env.
+name: auth-service
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+    ports:
+      - "5432:5432" # auth's documented host port
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://auth_user:auth_password@postgres:5432/auth_db
+      JWT_SECRET: ${JWT_SECRET:-supersecret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-superrefresh}
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL: 7d
+      PORT: "8080"
+      OTEL_SERVICE_NAME: auth-service
+    command: ["sh", "-c", "npx prisma migrate deploy && node index.js"]
+    ports:
+      - "8080:8080" # HTTP
+      - "4001:4001" # gRPC
+
+volumes:
+  pgdata:
