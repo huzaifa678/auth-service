@@ -4,8 +4,52 @@ updates:
     directory: "/auth-service"
     schedule:
       interval: "weekly"
+    # Cap concurrent PRs so multiple lockfile-touching branches don't pile up and
+    # produce merge-conflicted pnpm-lock.yaml (duplicate / missing keys).
+    open-pull-requests-limit: 5
+    # Keep package.json ranges and the lockfile in step so a bumped lockfile can
+    # never drift from an un-bumped specifier.
+    versioning-strategy: increase
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    # Group related updates into a single PR = a single, atomic lockfile change.
+    # OpenTelemetry packages MUST move together (mismatched versions break the SDK),
+    # which is what caused the botched auto-instrumentations-node bump.
+    groups:
+      opentelemetry:
+        patterns:
+          - "@opentelemetry/*"
+        update-types:
+          - "minor"
+          - "patch"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+        update-types:
+          - "minor"
+          - "patch"
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Majors are deliberately left ungrouped: each arrives as its own PR for manual
+    # review and is never auto-merged (see dependabot-auto-merge.yml).
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(actions)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"

@@ -17,8 +17,11 @@ jobs:
         id: meta
         uses: dependabot/fetch-metadata@v3
 
+      # Patch-only. semver-minor is excluded because for 0.x packages (e.g.
+      # @opentelemetry/*) a minor bump like 0.69 -> 0.76 can be breaking, and that
+      # is exactly what auto-merged and broke the build. Minors/majors need review.
       - name: Enable auto-merge
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch'
         run: gh pr merge --auto --merge "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
